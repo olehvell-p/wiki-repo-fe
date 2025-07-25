@@ -73,7 +73,7 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
     } catch (err) {
-      setError("Failed to analyze repository. Please try again.");
+      setError("Can't access the repository. Please check if it's public.");
       console.error("Analysis error:", err);
     } finally {
       setIsLoading(false);
@@ -92,16 +92,21 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
       <div className="w-full max-w-md space-y-6">
         {/* Title */}
-        <h1 className="text-3xl font-bold text-center text-foreground">
-          Repo Analyzer
-        </h1>
+        <div className="flex flex-col items-center justify-center">
+          <h1 className="text-3xl font-bold text-center text-foreground">
+            Wiki Repo Generator
+          </h1>
+          <span className="text-sm pt-4 text-center text-foreground">
+            Generate wiki for any public github repository. 
+          </span>
+        </div>
 
         {/* Input */}
         <div className="space-y-2">
           <div className="flex gap-4">
             <Input
               type="text"
-              placeholder="Link to github repo http..."
+              placeholder="Link to a github repo http://github.com/..."
               value={repoUrl}
               onChange={handleInputChange}
               className={error ? "border-destructive" : ""}
@@ -118,6 +123,11 @@ export default function Home() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
+      </div>
+      <div className="absolute bottom-0 flex flex-col items-center w-full p-4">
+        <span className="text-sm text-center text-foreground">
+          Build by Oleh for <a href="https://www.cubic.dev" className="text-blue-500">cubic.dev</a>
+        </span>
       </div>
     </div>
   );

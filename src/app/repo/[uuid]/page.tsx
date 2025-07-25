@@ -107,7 +107,7 @@ export default function RepoPage() {
     if (!uuid) return;
 
     const eventSource = new EventSource(
-      `http://localhost:8000/analyze/${uuid}`
+      `/api/analyze/${uuid}`
     );
 
     eventSource.onopen = () => {
