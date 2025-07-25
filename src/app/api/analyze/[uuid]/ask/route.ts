@@ -27,7 +27,7 @@ export async function POST(
     }
 
     // Forward the request to the FastAPI backend
-    const backendResponse = await fetch(`${BACKEND_URL}/repo/${uuid}/ask`, {
+    const backendResponse = await fetch(`${BACKEND_URL}/analyze/${uuid}/ask`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -58,7 +58,7 @@ export function AskQuestionDialog({
         e.preventDefault();
         onOpenChange(true);
       }
-      
+
       // Escape to close dialog
       if (e.key === "Escape" && isOpen) {
         onOpenChange(false);
@@ -87,7 +87,7 @@ export function AskQuestionDialog({
       // Prepare the message list to send to the API
       const messagesToSend = [...messages, userMessage];
 
-      const response = await fetch(`/api/repo/${repoUuid}/ask`, {
+      const response = await fetch(`/api/analyze/${repoUuid}/ask`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -117,11 +117,12 @@ export function AskQuestionDialog({
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
-      
+
       // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Sorry, there was an error processing your question. Please try again.",
+        content:
+          "Sorry, there was an error processing your question. Please try again.",
         role: "assistant",
         timestamp: new Date(),
       };
@@ -150,7 +151,12 @@ export function AskQuestionDialog({
           <DialogTitle className="flex items-center justify-between">
             <span>Ask a Question</span>
             {messages.length > 0 && (
-              <Button className="mt-4" variant="outline" size="sm" onClick={clearMessages}>
+              <Button
+                className="mt-4"
+                variant="outline"
+                size="sm"
+                onClick={clearMessages}
+              >
                 Clear Chat
               </Button>
             )}
@@ -165,7 +171,8 @@ export function AskQuestionDialog({
                 <Bot className="mx-auto mb-2 h-8 w-8" />
                 <p>Ask me anything about this repository!</p>
                 <p className="text-sm mt-1">
-                  Try asking about the code structure, functionality, or how to use the project.
+                  Try asking about the code structure, functionality, or how to
+                  use the project.
                 </p>
               </div>
             ) : (
@@ -181,7 +188,7 @@ export function AskQuestionDialog({
                       <Bot className="h-6 w-6 text-blue-600" />
                     </div>
                   )}
-                  
+
                   <div
                     className={`max-w-[80%] rounded-lg p-3 ${
                       message.role === "user"
@@ -189,7 +196,9 @@ export function AskQuestionDialog({
                         : "bg-gray-100 text-gray-900"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">
+                      {message.content}
+                    </p>
                     <span className="text-xs opacity-70 mt-1 block">
                       {message.timestamp.toLocaleTimeString()}
                     </span>
@@ -203,7 +212,7 @@ export function AskQuestionDialog({
                 </div>
               ))
             )}
-            
+
             {isLoading && (
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
@@ -212,8 +221,14 @@ export function AskQuestionDialog({
                 <div className="bg-gray-100 rounded-lg p-3">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.1s" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -247,10 +262,11 @@ export function AskQuestionDialog({
             <kbd className="px-1 py-0.5 bg-muted rounded text-xs">
               {navigator.platform.indexOf("Mac") > -1 ? "Cmd" : "Ctrl"}
             </kbd>{" "}
-            + <kbd className="px-1 py-0.5 bg-muted rounded text-xs">K</kbd> to open this dialog
+            + <kbd className="px-1 py-0.5 bg-muted rounded text-xs">K</kbd> to
+            open this dialog
           </p>
         </div>
       </DialogContent>
     </Dialog>
   );
-} 
+}
