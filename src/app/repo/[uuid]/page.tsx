@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowLeft,
-  GithubLogo,
-  LinkIcon,
-  LinkSimple,
-  Sparkle,
-} from "@phosphor-icons/react";
+import { ArrowLeft, LinkSimple } from "@phosphor-icons/react";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
 import {
   Sidebar,
   SidebarContent,
@@ -22,13 +15,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
-  SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { RenderFileContent } from "@/components/ui/renderFileContent";
+import {
+  RenderCode,
+  RenderFileContent,
+} from "@/components/ui/renderFileContent";
 import {
   Collapsible,
   CollapsibleContent,
@@ -36,43 +31,8 @@ import {
 } from "@/components/ui/collapsible";
 import Markdown from "react-markdown";
 import { AskQuestionDialog } from "@/components/ui/ask-question-dialog";
-
-interface Section {
-  summary: string;
-  relevantFiles: File[];
-}
-
-interface KeyFunctionality {
-  veryShortDescription: string;
-  description: string;
-  referenceFile: string;
-}
-
-interface Overview {
-  summary: string;
-  keyFunctionality: KeyFunctionality[];
-}
-
-interface RepoData {
-  repo_id: string;
-  name: string;
-  owner: string;
-  has_readme: boolean;
-  readme?: string;
-  default_branch: string;
-  link: string;
-  description?: string;
-  overview?: Overview;
-  auth_analysis?: Section;
-  data_model_analysis?: Section;
-  entry_points?: Section;
-}
-
-interface File {
-  fileName: string;
-  link: string;
-  explaination: string;
-}
+import { getFileName } from "@/lib/utils";
+import { useRepoAnalysis } from "@/hooks/use-repo-analysis";
 
 type SectionType =
   | "readme"
@@ -88,110 +48,16 @@ type SectionType =
 export default function RepoPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const uuid = params.uuid as string;
 
-  const [repo, setRepo] = useState<RepoData | null>(null);
-  const [error, setError] = useState("");
+  const { repo, error } = useRepoAnalysis({ uuid });
   const [selectedSection, setSelectedSection] = useState<SectionType>("readme");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [readmeContent, setReadmeContent] = useState<string>("");
-  const [readmeLoading, setReadmeLoading] = useState<boolean>(false);
-  const [readmeError, setReadmeError] = useState<string>("");
+
   const [selectedKeyFunctionality, setSelectedKeyFunctionality] =
     useState<KeyFunctionality | null>(null);
+
   const [isAskDialogOpen, setIsAskDialogOpen] = useState(false);
-
-  // EventSource for SSE
-  useEffect(() => {
-    if (!uuid) return;
-
-    const eventSource = new EventSource(
-      `/api/analyze/${uuid}`
-    );
-
-    eventSource.onopen = () => {
-      console.log("SSE connection opened");
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        console.log("data", event.data);
-        console.log("Received SSE data:", data);
-
-        switch (data.event_type) {
-          case "start":
-            setRepo(data);
-            break;
-
-          case "overview":
-            setRepo((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    overview: JSON.parse(data.message),
-                  }
-                : null
-            );
-            break;
-
-          case "readme":
-            setRepo((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    has_readme: data.message["has_readme"],
-                    readme: data.message["readme"],
-                  }
-                : null
-            );
-            break;
-
-          case "auth_analysis":
-            setRepo((prev) =>
-              prev ? { ...prev, auth_analysis: JSON.parse(data.message) } : null
-            );
-            break;
-
-          case "data_model_analysis":
-            setRepo((prev) =>
-              prev
-                ? { ...prev, data_model_analysis: JSON.parse(data.message) }
-                : null
-            );
-            break;
-
-          case "entry_points":
-            setRepo((prev) =>
-              prev ? { ...prev, entry_points: JSON.parse(data.message) } : null
-            );
-            break;
-
-          case "completed":
-            console.log("Analysis completed:", data.message);
-            eventSource.close();
-            break;
-
-          case "error":
-            setError(data.message);
-            eventSource.close();
-            break;
-
-          default:
-            console.log("Unknown event type:", data.event_type);
-        }
-      } catch (err) {
-        console.error("Error parsing SSE data:", err);
-        setError("Failed to parse analysis data");
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.error("SSE error:", err);
-    };
-  }, [uuid]);
 
   if (!repo?.name) {
     return (
@@ -202,8 +68,6 @@ export default function RepoPage() {
       </div>
     );
   }
-
-  console.log("repo", repo);
 
   if (error) {
     return (
@@ -234,7 +98,6 @@ export default function RepoPage() {
           selectedKeyFunctionality={selectedKeyFunctionality}
           onSectionSelect={setSelectedSection}
           onFileSelect={setSelectedFile}
-          setReadmeContent={setReadmeContent}
           setSelectedKeyFunctionality={setSelectedKeyFunctionality}
           onAskQuestion={() => setIsAskDialogOpen(true)}
           onLeave={() => router.push("/")}
@@ -244,12 +107,6 @@ export default function RepoPage() {
           selectedSection={selectedSection}
           selectedFile={selectedFile}
           selectedKeyFunctionality={selectedKeyFunctionality}
-          readmeContent={readmeContent}
-          readmeLoading={readmeLoading}
-          readmeError={readmeError}
-          setReadmeContent={setReadmeContent}
-          setReadmeLoading={setReadmeLoading}
-          setReadmeError={setReadmeError}
         />
       </SidebarProvider>
 
@@ -263,164 +120,24 @@ export default function RepoPage() {
 }
 
 interface MainScreenProps {
-  repo: RepoData;
+  repo: RepoAnalysis;
   selectedSection: SectionType;
   selectedFile: File | null;
   selectedKeyFunctionality: KeyFunctionality | null;
-  readmeContent: string;
-  readmeLoading: boolean;
-  readmeError: string;
-  setReadmeContent: (content: string) => void;
-  setReadmeLoading: (loading: boolean) => void;
-  setReadmeError: (error: string) => void;
 }
-
-// Reusable component for sections with summary and files
-interface SectionContentProps {
-  title: string;
-  section?: Section;
-  selectedFile: File | null;
-  repo: RepoData;
-  bgColor: string;
-}
-
-const SectionContent = ({
-  title,
-  section,
-  selectedFile,
-  repo,
-  bgColor,
-}: SectionContentProps) => {
-  if (selectedFile) {
-    return (
-      <div className="">
-        <div className="flex ">
-          <h2 className="text-2xl font-bold mb-4">{selectedFile.fileName}</h2>
-          <Button
-            variant="link"
-            className="cursor-pointer"
-            onClick={() =>
-              window.open(
-                repo.link +
-                  "/blob/" +
-                  repo.default_branch +
-                  "/" +
-                  selectedFile.fileName,
-                "_blank"
-              )
-            }
-          >
-            <LinkSimple size={16} />
-          </Button>
-        </div>
-        <h3 className="text-lg font-semibold mb-2">Explaination</h3>
-        <p className="text-gray-700 pb-4">{selectedFile.explaination}</p>
-        <div className={`${bgColor} p-6 rounded-lg`}>
-          <RenderFileContent
-            link={
-              repo.link +
-              "/blob/" +
-              repo.default_branch +
-              "/" +
-              selectedFile.fileName
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="prose max-w-none">
-      <h2 className="text-2xl font-bold mb-4">{title}</h2>
-      {section && (
-        <div className={`${bgColor} p-6 rounded-lg`}>
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">Summary</h3>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {section.summary}
-            </ReactMarkdown>
-          </div>
-        </div>
-      )}
-      {section && section.relevantFiles.length > 0 && (
-        <div className="space-y-4 pt-4">
-          <h3 className="text-lg font-semibold mb-2">Reference Files</h3>
-          <div className="flex gap-4">
-            {section.relevantFiles.map((file, index) => (
-              <div key={index} className="">
-                <Button
-                  variant="link"
-                  onClick={() =>
-                    window.open(
-                      repo.link +
-                        "/blob/" +
-                        repo.default_branch +
-                        "/" +
-                        file.fileName,
-                      "_blank"
-                    )
-                  }
-                >
-                  {file.fileName} <LinkSimple size={14} />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const MainScreen = ({
   repo,
   selectedSection,
   selectedFile,
   selectedKeyFunctionality,
-  setReadmeContent,
-  setReadmeLoading,
-  setReadmeError,
 }: MainScreenProps) => {
-  // Function to convert GitHub blob URL to raw content URL
-  const convertToRawUrl = (githubUrl: string) => {
-    return githubUrl
-      .replace("github.com", "raw.githubusercontent.com")
-      .replace("/blob/", "/");
-  };
-
   // Function to fetch README content
-  const fetchReadmeContent = async (readmeUrl: string) => {
-    if (!readmeUrl) return;
-
-    setReadmeLoading(true);
-    setReadmeError("");
-
-    try {
-      const rawUrl = convertToRawUrl(readmeUrl);
-      const response = await fetch(rawUrl);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch README: ${response.statusText}`);
-      }
-
-      const content = await response.text();
-      setReadmeContent(content);
-    } catch (error) {
-      console.error("Error fetching README:", error);
-      setReadmeError(
-        error instanceof Error ? error.message : "Failed to fetch README"
-      );
-    } finally {
-      setReadmeLoading(false);
-    }
-  };
-
   const renderContent = () => {
     switch (selectedSection) {
       case "readme":
         return (
-          <div className="flex flex-col items-center w-full mx-auto">
+          <div className="flex flex-col w-full">
             {repo.has_readme === undefined ? (
               <div className="flex items-center justify-center space-x-2 p-6 bg-gray-50 rounded-lg">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
@@ -446,12 +163,23 @@ const MainScreen = ({
 
       case "overview":
         return (
-          <div className="prose max-w-none">
-            <h2 className="text-2xl font-bold mb-4">Overview</h2>
+          <div className="prose max-w-none ">
+            <h2 className="text-2xl font-bold mb-4">{"Overview"}</h2>
+            {repo.overview?.oneLiner && (
+              <div className="bg-indigo-50 p-6 mb-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-2">TLDR</h3>
+                <p className="text-gray-700">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {repo.overview.oneLiner}
+                  </ReactMarkdown>
+                </p>
+              </div>
+            )}
             {repo.overview?.summary && (
               <div className="bg-blue-50 p-6 rounded-lg">
                 <div className="mb-4">
-                  <h3 className="text-lg font-semibold mb-2">Summary</h3>
+                  <h3 className="text-lg font-semibold mb-2">More Details</h3>
+
                   <p className="text-gray-700">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {repo.overview.summary}
@@ -481,6 +209,7 @@ const MainScreen = ({
                   <h4 className="text-md font-semibold mb-2">Reference File</h4>
                   <Button
                     variant="link"
+                    size={null}
                     onClick={() =>
                       window.open(
                         repo.link +
@@ -492,7 +221,7 @@ const MainScreen = ({
                       )
                     }
                   >
-                    {selectedKeyFunctionality.referenceFile}{" "}
+                    {getFileName(selectedKeyFunctionality.referenceFile)}{" "}
                     <LinkSimple size={14} />
                   </Button>
                 </div>
@@ -522,6 +251,7 @@ const MainScreen = ({
                           </h4>
                           <p className="text-gray-600">
                             <Button
+                              size={null}
                               variant="link"
                               onClick={() =>
                                 window.open(
@@ -534,7 +264,7 @@ const MainScreen = ({
                                 )
                               }
                             >
-                              {functionality.referenceFile}{" "}
+                              {getFileName(functionality.referenceFile)}{" "}
                               <LinkSimple size={14} />
                             </Button>
                           </p>
@@ -580,26 +310,6 @@ const MainScreen = ({
             bgColor="bg-orange-50"
           />
         );
-
-      case "github-link":
-        return (
-          <div className="prose max-w-none">
-            <h2 className="text-2xl font-bold mb-4">GitHub Repository</h2>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <p className="text-gray-600 mb-4">
-                Visit the GitHub repository for the latest code, issues, and
-                contributions.
-              </p>
-              <Button
-                onClick={() => window.open(repo.link, "_blank")}
-                className="flex items-center space-x-2"
-              >
-                <GithubLogo size={16} />
-                <span>Open on GitHub</span>
-              </Button>
-            </div>
-          </div>
-        );
     }
   };
 
@@ -617,21 +327,20 @@ const MainScreen = ({
       </header>
 
       {/* CONTENT */}
-      <div className="flex-1 flex px-12 pt-12 pb-12 h-full w-full  justify-center overflow-y-auto">
-        <div className="flex max-w-4xl justify-center">{renderContent()}</div>
+      <div className="flex-1 flex px-12 pt-12 pb-12 justify-center overflow-y-auto">
+        <div className="flex max-w-4xl">{renderContent()}</div>
       </div>
     </div>
   );
 };
 
 interface SideBarProps {
-  repo: RepoData;
+  repo: RepoAnalysis;
   selectedSection: SectionType;
   selectedFile: File | null;
   selectedKeyFunctionality: KeyFunctionality | null;
   onSectionSelect: (section: SectionType) => void;
   onFileSelect: (file: File | null) => void;
-  setReadmeContent: (content: string) => void;
   setSelectedKeyFunctionality: (functionality: KeyFunctionality | null) => void;
   onAskQuestion: () => void;
   onLeave: () => void;
@@ -644,7 +353,6 @@ const SideBar = ({
   selectedKeyFunctionality,
   onSectionSelect,
   onFileSelect,
-  setReadmeContent,
   setSelectedKeyFunctionality,
   onAskQuestion,
   onLeave,
@@ -676,7 +384,7 @@ const SideBar = ({
               isActive={selectedSection === "github-link"}
             >
               <button onClick={() => window.open(repo.link, "_blank")}>
-                <span>Open in GitHub</span>
+                <span>Open in GitHub ↗</span>
               </button>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -692,7 +400,6 @@ const SideBar = ({
                 disabled={!repo.overview}
                 onClick={() => {
                   onSectionSelect("overview");
-                  setReadmeContent(repo.overview?.summary ?? "");
                 }}
                 className={repo.overview ? "" : "opacity-50"}
               >
@@ -783,16 +490,17 @@ const SideBar = ({
                       <SidebarMenuSubItem key={index}>
                         <button
                           onClick={() => {
+                            onSectionSelect("entry-points");
                             onFileSelect(file);
                           }}
                           className={`w-full text-left px-3 py-1 rounded text-sm hover:bg-gray-100 ${
                             selectedSection === "file" &&
-                            selectedFile?.fileName === file.fileName
+                            selectedFile?.filePath === file.filePath
                               ? "bg-gray-100 font-medium"
                               : "text-gray-600"
                           }`}
                         >
-                          {file.fileName}
+                          {getFileName(file.filePath)}
                         </button>
                       </SidebarMenuSubItem>
                     ))}
@@ -830,17 +538,17 @@ const SideBar = ({
                       <SidebarMenuSubItem key={index}>
                         <button
                           onClick={() => {
-                            onSectionSelect("file");
+                            onSectionSelect("authentication");
                             onFileSelect(file);
                           }}
                           className={`w-full text-left px-3 py-1 rounded text-sm hover:bg-gray-100 ${
                             selectedSection === "file" &&
-                            selectedFile?.fileName === file.fileName
+                            selectedFile?.filePath === file.filePath
                               ? "bg-gray-100 font-medium"
                               : "text-gray-600"
                           }`}
                         >
-                          {file.fileName}
+                          {getFileName(file.filePath)}
                         </button>
                       </SidebarMenuSubItem>
                     ))}
@@ -880,17 +588,17 @@ const SideBar = ({
                           <SidebarMenuSubItem key={index}>
                             <button
                               onClick={() => {
-                                onSectionSelect("file");
+                                onSectionSelect("data-model");
                                 onFileSelect(file);
                               }}
                               className={`w-full text-left px-3 py-1 rounded text-sm hover:bg-gray-100 ${
                                 selectedSection === "file" &&
-                                selectedFile?.fileName === file.fileName
+                                selectedFile?.filePath === file.filePath
                                   ? "bg-gray-100 font-medium"
                                   : "text-gray-600"
                               }`}
                             >
-                              {file.fileName}
+                              {getFileName(file.filePath)}
                             </button>
                           </SidebarMenuSubItem>
                         )
@@ -910,5 +618,106 @@ const SideBar = ({
         </SidebarMenuItem>
       </SidebarFooter>
     </Sidebar>
+  );
+};
+
+interface SectionContentProps {
+  title: string;
+  section?: Section;
+  selectedFile: File | null;
+  repo: RepoAnalysis;
+  bgColor: string;
+}
+
+const SectionContent = ({
+  title,
+  section,
+  selectedFile,
+  repo,
+  bgColor,
+}: SectionContentProps) => {
+  if (selectedFile) {
+    return (
+      <div className="">
+        <div className="flex gap-2">
+          <h2 className="text-2xl font-bold mb-4">
+            {getFileName(selectedFile.filePath)}
+          </h2>
+          <Button
+            size={null}
+            variant="link"
+            className="cursor-pointer"
+            onClick={() =>
+              window.open(
+                repo.link +
+                  "/blob/" +
+                  repo.default_branch +
+                  "/" +
+                  selectedFile.filePath,
+                "_blank"
+              )
+            }
+          >
+            <LinkSimple size={20} />
+          </Button>
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Explaination</h3>
+        <p className="text-gray-700 pb-4">{selectedFile.explaination}</p>
+        <div className={`${bgColor} p-6 rounded-lg`}>
+          <RenderCode
+            link={
+              repo.link +
+              "/blob/" +
+              repo.default_branch +
+              "/" +
+              selectedFile.filePath
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="prose max-w-none">
+      <h2 className="text-2xl font-bold mb-4">{title}</h2>
+      {section && (
+        <div className={`${bgColor} p-6 rounded-lg`}>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold mb-2">Summary</h3>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {section.summary}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
+      {section && section.relevantFiles.length > 0 && (
+        <div className="space-y-4 pt-4">
+          <h3 className="text-lg font-semibold mb-2">Reference Files</h3>
+          <div className="flex gap-4">
+            {section.relevantFiles.map((file, index) => (
+              <div key={index} className="">
+                <Button
+                  variant="link"
+                  size={null}
+                  onClick={() =>
+                    window.open(
+                      repo.link +
+                        "/blob/" +
+                        repo.default_branch +
+                        "/" +
+                        file.filePath,
+                      "_blank"
+                    )
+                  }
+                >
+                  {getFileName(file.filePath)} <LinkSimple size={14} />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

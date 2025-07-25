@@ -2,6 +2,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import useSWR from "swr";
 
+import { CopyBlock } from "react-code-blocks";
+
 // Function to convert GitHub blob URL to raw content URL
 const convertToRawUrl = (githubUrl: string) => {
   if (githubUrl.includes("github.com") && githubUrl.includes("/blob/")) {
@@ -77,12 +79,12 @@ export const RenderFileContent = ({ link }: { link: string }) => {
           <p className="mb-4 text-gray-600 leading-relaxed">{children}</p>
         ),
         code: ({ children }) => (
-          <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">
+          <code className="bg-gray-100 px-1 py-0.5  rounded text-sm font-mono">
             {children}
           </code>
         ),
         pre: ({ children }) => (
-          <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto border">
+          <pre className="bg-gray-50 p-8 rounded-lg overflow-x-auto border">
             {children}
           </pre>
         ),
@@ -112,5 +114,45 @@ export const RenderFileContent = ({ link }: { link: string }) => {
     >
       {content}
     </ReactMarkdown>
+  );
+};
+
+export const RenderCode = ({ link }: { link: string }) => {
+  const {
+    data: content,
+    error,
+    isLoading,
+  } = useSWR(
+    link ? link : null, // Only fetch if link exists
+    fetcher,
+    {
+      revalidateOnFocus: false, // Don't refetch when window regains focus
+      revalidateOnReconnect: false, // Don't refetch when network reconnects
+    }
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-500">Loading content...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+        <div className="text-red-700 font-medium">Error loading content:</div>
+        <div className="text-red-600 text-sm mt-1">{error.message}</div>
+      </div>
+    );
+  }
+  return (
+    <CopyBlock
+      text={content || ""}
+      language="python"
+      showLineNumbers={true}
+      wrapLongLines={true}
+    />
   );
 };

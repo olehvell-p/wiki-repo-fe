@@ -29,11 +29,9 @@ export default function Home() {
     const value = e.target.value;
     setRepoUrl(value);
 
-    // Clear error if input becomes empty or valid
     if (!value || isValidGithubUrl(value)) {
       setError("");
     } else if (value.length > 0) {
-      // Show error if input has content but doesn't look like a URL or GitHub repo
       if (!value.startsWith("http")) {
         setError("Please enter a valid URL starting with http:// or https://");
       } else if (!value.includes("github.com")) {
@@ -61,9 +59,7 @@ export default function Home() {
 
       if (response.status === 200) {
         const result = await response.json();
-        console.log("Analysis result:", result);
 
-        // Navigate to the repo page with the UUID
         if (result.uuid) {
           router.push(`/repo/${result.uuid}`);
         } else {
@@ -91,22 +87,19 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
       <div className="w-full max-w-md space-y-6">
-        {/* Title */}
         <div className="flex flex-col items-center justify-center">
           <h1 className="text-3xl font-bold text-center text-foreground">
             Wiki Repo Generator
           </h1>
           <span className="text-sm pt-4 text-center text-foreground">
-            Generate wiki for any public github repository. 
+            Generate wiki for any public GitHub repository. 
           </span>
         </div>
-
-        {/* Input */}
         <div className="space-y-2">
           <div className="flex gap-4">
             <Input
               type="text"
-              placeholder="Link to a github repo http://github.com/..."
+              placeholder="https://github.com/organization/repo"
               value={repoUrl}
               onChange={handleInputChange}
               className={error ? "border-destructive" : ""}
@@ -126,7 +119,7 @@ export default function Home() {
       </div>
       <div className="absolute bottom-0 flex flex-col items-center w-full p-4">
         <span className="text-sm text-center text-foreground">
-          Build by Oleh for <a href="https://www.cubic.dev" className="text-blue-500">cubic.dev</a>
+          Built by Oleh for <a href="https://www.cubic.dev" className="text-blue-500">cubic.dev</a>
         </span>
       </div>
     </div>
