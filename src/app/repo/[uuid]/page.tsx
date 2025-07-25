@@ -363,7 +363,7 @@ const SideBar = ({
         <div className="flex items-center">
           <Button variant="outline" onClick={onAskQuestion}>
             <div className="flex  gap-2">
-              <span>Ask Question (CMD + K)</span>
+              <span>Ask Question (⌘ + K)</span>
             </div>
           </Button>
         </div>
